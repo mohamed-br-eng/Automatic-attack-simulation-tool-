@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapport de scan — {{ meta.target }}</title>
+<style>
+  :root {
+    --bg: #0f172a; --panel: #1e293b; --panel2: #273449;
+    --text: #e2e8f0; --muted: #94a3b8; --border: #334155; --accent: #38bdf8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5; font-size: 14px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 20px; }
+  header h1 { margin: 0 0 4px; font-size: 24px; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  header .meta code { color: var(--accent); }
+  h2 { font-size: 18px; border-bottom: 1px solid var(--border);
+       padding-bottom: 6px; margin-top: 36px; }
+
+  .cards { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+  .card { background: var(--panel); border: 1px solid var(--border);
+          border-radius: 10px; padding: 14px 18px; min-width: 110px; flex: 1; }
+  .card .n { font-size: 28px; font-weight: 700; }
+  .card .l { color: var(--muted); font-size: 12px; text-transform: uppercase;
+             letter-spacing: .04em; }
+
+  .posture { display: inline-block; padding: 6px 14px; border-radius: 999px;
+             font-weight: 700; color: #fff; }
+
+  .finding { background: var(--panel); border: 1px solid var(--border);
+             border-left-width: 5px; border-radius: 8px;
+             padding: 14px 16px; margin: 12px 0; }
+  .finding h3 { margin: 0 0 6px; font-size: 15px; }
+  .badges { margin: 4px 0 10px; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 6px;
+           font-size: 11px; font-weight: 700; color: #fff; margin-right: 6px; }
+  .badge.cat { background: var(--panel2); color: var(--muted); }
+  .kv { color: var(--muted); font-size: 12px; margin: 2px 0; }
+  .reco { background: var(--panel2); border-radius: 6px; padding: 8px 12px;
+          margin-top: 8px; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+  pre { background: #0b1220; border: 1px solid var(--border); border-radius: 6px;
+        padding: 10px; overflow-x: auto; font-size: 12px;
+        white-space: pre-wrap; word-break: break-word; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px;
+           border-top: 1px solid var(--border); padding-top: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Rapport d'analyse de sécurité</h1>
+    <div class="meta">
+      Cible : <code>{{ meta.target }}</code> ·
+      Outil : {{ meta.tool }} ·
+      Généré le {{ meta.generated_at }}
+      {% if meta.scan_id %}· Scan <code>{{ meta.scan_id }}</code>{% endif %}
+    </div>
+  </header>
+
+  <h2>Résumé exécutif</h2>
+  <p>
+    Posture globale :
+    <span class="posture" style="background: {{ summary.posture | sev_color }}">
+      {{ summary.posture }}
+    </span>
+    — {{ summary.total }} finding(s) au total.
+  </p>
+  <div class="cards">
+    {% for sev in severity_order %}
+    <div class="card" style="border-left: 4px solid {{ sev | sev_color }}">
+      <div class="n">{{ summary.by_severity[sev] }}</div>
+      <div class="l">{{ sev }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if summary.top_risks %}
+  <h3>Top risques</h3>
+  <ul>
+    {% for r in summary.top_risks %}
+    <li><strong>{{ r.title }}</strong> — {{ r.category }}
+        ({{ r.severity }}, CVSS {{ "%.1f"|format(r.cvss_score) }})</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <h2>Détails techniques</h2>
+  {% for f in findings %}
+  <div class="finding" style="border-left-color: {{ f.severity | sev_color }}">
+    <h3>{{ f.title }}</h3>
+    <div class="badges">
+      <span class="badge" style="background: {{ f.severity | sev_color }}">
+        {{ f.severity }}</span>
+      <span class="badge cat">{{ f.category }}</span>
+      {% if f.cvss_score %}
+      <span class="badge cat">CVSS {{ "%.1f"|format(f.cvss_score) }}</span>
+      {% endif %}
+      {% if f.epss is not none %}
+      <span class="badge cat">EPSS {{ "%.3f"|format(f.epss) }}</span>
+      {% endif %}
+    </div>
+    {% if f.cvss_vector %}<div class="kv">Vecteur : {{ f.cvss_vector }}</div>{% endif %}
+    {% if f.target %}<div class="kv">Cible : {{ f.target }}</div>{% endif %}
+    {% if f.plugin %}<div class="kv">Module : {{ f.plugin }}</div>{% endif %}
+
+    <div class="reco"><strong>Remédiation :</strong> {{ f.recommendation }}</div>
+
+    {% if f.evidence or f.request or f.response %}
+    <details>
+      <summary>Preuve (payload / requête / réponse)</summary>
+      {% if f.evidence %}<pre>{{ f.evidence }}</pre>{% endif %}
+      {% if f.request %}<pre>&gt; {{ f.request }}</pre>{% endif %}
+      {% if f.response %}<pre>&lt; {{ f.response }}</pre>{% endif %}
+    </details>
+    {% endif %}
+  </div>
+  {% else %}
+  <p>Aucun finding.</p>
+  {% endfor %}
+
+  <footer>
+    Rapport généré automatiquement — {{ meta.tool }}.
+    Démo hors-ligne sur lab local autorisé uniquement.
+  </footer>
+</div>
+</body>
+</html>

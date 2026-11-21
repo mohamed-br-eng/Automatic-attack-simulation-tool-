@@ -9,7 +9,7 @@
 |------|---------|--------|
 | **Brute force / dictionnaire** avec gestion token anti-CSRF | `plugins/p4_auth/bruteforce.py` | ✅ fait + testé |
 | **HTTP Basic / Digest** (challenge-response MD5 codé main) | `plugins/p4_auth/http_auth.py` | ⏳ à faire |
-| **Broken Access Control / SSRF** (IDOR, méthodes dangereuses, `169.254.169.254`) | `plugins/p4_auth/access_control.py` | ⏳ à faire |
+| **Broken Access Control / SSRF** (IDOR, méthodes dangereuses, `169.254.169.254`) | `plugins/p4_auth/access_control.py` | ✅ fait + testé |
 | **Moteur de rapport** JSON → HTML (Jinja2) → PDF (WeasyPrint) | `reporting/` | ✅ JSON+HTML faits + testés · PDF à activer (WeasyPrint) |
 | **Scoring CVSS 4.0** + priorisation EPSS | `scoring/cvss4.py` | ⏳ à faire |
 

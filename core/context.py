@@ -1,7 +1,7 @@
 """
-Target et Context : les objets passés à chaque plugin.
+Target and Context: the objects passed to every plugin.
 
-⚠️ CONTRAT PARTAGÉ (appartient à P1). Proposition P4 à réconcilier.
+WARNING - SHARED CONTRACT (owned by P1). P4 proposal, to be reconciled.
 """
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ from urllib.parse import urlparse
 @dataclass
 class Target:
     """
-    La cible du scan. L'entrée utilisateur du projet est "simplement l'adresse IP"
-    (cf. cahier des charges ISEP), mais on garde l'URL de base pour les plugins web.
+    The scan target. The project's user input is "simply the target IP address"
+    (per the ISEP brief), but we keep the base URL for web plugins.
     """
-    host: str                      # IP ou hostname
-    base_url: str = ""             # ex. "http://127.0.0.1:8080"
+    host: str                      # IP or hostname
+    base_url: str = ""             # e.g. "http://127.0.0.1:8080"
     port: int = 80
 
     def __post_init__(self) -> None:
@@ -25,7 +25,7 @@ class Target:
             self.base_url = f"http://{self.host}:{self.port}"
 
     def is_private(self) -> bool:
-        """True si la cible est une IP privée / loopback (garde-fou éthique)."""
+        """True if the target is a private / loopback IP (ethics guard)."""
         host = urlparse(self.base_url).hostname or self.host
         if host in ("localhost",):
             return True
@@ -33,32 +33,32 @@ class Target:
             ip = ipaddress.ip_address(host)
             return ip.is_private or ip.is_loopback
         except ValueError:
-            # hostname non résolu ici : on refuse par défaut (fail-closed)
+            # unresolved hostname here: refuse by default (fail-closed)
             return False
 
 
 @dataclass
 class Context:
     """
-    Contexte partagé d'un scan : garde-fous éthiques + réglages de concurrence.
-    Le mode éthique (P1) impose l'autorisation ET une cible en réseau privé.
+    Shared scan context: ethics guards + concurrency settings.
+    Ethical mode (P1) requires BOTH authorization AND a private-network target.
     """
-    authorized: bool = False       # flag --i-have-authorization
-    rate_limit: float = 10.0       # requêtes/seconde max par plugin
-    timeout: float = 10.0          # timeout par requête (s)
-    max_concurrency: int = 10      # borne du Semaphore
+    authorized: bool = False       # --i-have-authorization flag
+    rate_limit: float = 10.0       # max requests/second per plugin
+    timeout: float = 10.0          # per-request timeout (s)
+    max_concurrency: int = 10      # Semaphore bound
     extra: dict = field(default_factory=dict)
 
     def ethics_gate(self, target: Target) -> None:
         """
-        Lève une exception si le scan n'est pas autorisé OU hors réseau privé.
-        Appelé par l'orchestrateur (P1) avant de lancer un plugin.
+        Raise if the scan is not authorized OR the target is not private.
+        Called by the orchestrator (P1) before running any plugin.
         """
         if not self.authorized:
             raise PermissionError(
-                "Scan refusé : autorisation manquante (--i-have-authorization)."
+                "Scan refused: missing authorization (--i-have-authorization)."
             )
         if not target.is_private():
             raise PermissionError(
-                f"Scan refusé : {target.host} n'est pas dans un réseau privé/lab."
+                f"Scan refused: {target.host} is not in a private/lab network."
             )

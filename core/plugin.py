@@ -1,9 +1,9 @@
 """
-AttackPlugin : la classe de base de tout module d'attaque (Plugin/Strategy pattern).
+AttackPlugin: base class of every attack module (Plugin/Strategy pattern).
 
-⚠️ CONTRAT PARTAGÉ (appartient à P1). Proposition P4 à réconcilier.
-Chaque membre de l'équipe développe ses plugins contre CETTE interface,
-isolément. L'orchestrateur (P1) les découvre automatiquement via le registre.
+WARNING - SHARED CONTRACT (owned by P1). P4 proposal, to be reconciled.
+Each team member builds their plugins against THIS interface, in isolation.
+The orchestrator (P1) discovers them automatically via the registry.
 """
 from __future__ import annotations
 
@@ -14,24 +14,24 @@ from .finding import Finding
 
 
 class AttackPlugin(ABC):
-    """Interface unique de tout plugin d'attaque."""
+    """Single interface for every attack plugin."""
 
     name: str = "unnamed"
-    owasp_category: str = ""       # ex. "A07:2025 Authentication Failures"
+    owasp_category: str = ""       # e.g. "A07:2025 Authentication Failures"
 
     @abstractmethod
     async def run(self, target: Target, ctx: Context) -> list[Finding]:
-        """Exécute l'attaque et retourne la liste des findings détectés."""
+        """Run the attack and return the list of detected findings."""
         raise NotImplementedError
 
 
-# --- Registre de découverte automatique (simple décorateur) -----------------
-# P1 fournira la version définitive ; celle-ci permet de tester en autonomie.
+# --- Automatic discovery registry (simple decorator) ------------------------
+# P1 will provide the final version; this one enables standalone testing.
 _REGISTRY: dict[str, type[AttackPlugin]] = {}
 
 
 def register(cls: type[AttackPlugin]) -> type[AttackPlugin]:
-    """Décorateur d'auto-enregistrement d'un plugin."""
+    """Decorator that self-registers a plugin."""
     _REGISTRY[cls.name] = cls
     return cls
 

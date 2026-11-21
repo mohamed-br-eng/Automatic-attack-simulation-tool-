@@ -1,4 +1,4 @@
-"""Tests du scoring CVSS 4.0 (P4)."""
+"""CVSS 4.0 scoring tests (P4)."""
 import pytest
 
 from core import Severity
@@ -6,10 +6,10 @@ from scoring.cvss4 import (
     CvssError, parse_vector, nomenclature, score, risk_priority,
 )
 
-# Un vecteur Base complet, severite critique attendue.
+# A full Base vector, CRITICAL severity expected.
 V_CRIT = ("CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/"
           "VC:H/VI:H/VA:H/SC:H/SI:H/SA:H")
-# Base faible (peu d'impact, acces local).
+# Low base (little impact, local access).
 V_LOW = ("CVSS:4.0/AV:L/AC:H/AT:P/PR:H/UI:A/"
          "VC:L/VI:N/VA:N/SC:N/SI:N/SA:N")
 
@@ -56,7 +56,7 @@ def test_nomenclature():
 
 
 def test_risk_priority_epss():
-    # Meme CVSS, mais EPSS plus haut => priorite plus haute.
+    # Same CVSS, but higher EPSS => higher priority.
     assert risk_priority(9.0, 0.9) > risk_priority(9.0, 0.01)
-    # EPSS inconnu => renvoie le CVSS.
+    # Unknown EPSS => returns the CVSS.
     assert risk_priority(7.5, None) == 7.5

@@ -1,4 +1,4 @@
-"""Tests du plugin access_control (IDOR / méthodes HTTP / SSRF) avec respx."""
+"""access_control plugin tests (IDOR / HTTP methods / SSRF) with respx."""
 import httpx
 import pytest
 import respx
@@ -12,7 +12,7 @@ HOST = "http://127.0.0.1:8080"
 @pytest.mark.asyncio
 async def test_idor_detected():
     with respx.mock(assert_all_called=False) as mock:
-        # Chaque id renvoie un contenu distinct (objets d'utilisateurs differents).
+        # Each id returns distinct content (objects of different users).
         for i in range(1, 6):
             mock.get(f"{HOST}/api/user/{i}").mock(
                 return_value=httpx.Response(200, text=f'{{"id":{i},"email":"u{i}@x.fr","x":"{"a"*i}"}}'))
@@ -49,7 +49,7 @@ async def test_dangerous_methods():
         mock.route(method="PATCH", url=url).mock(return_value=httpx.Response(405))
         ctx = Context(authorized=True, extra={"methods_url": url})
         findings = await AccessControlPlugin().run(Target(host="127.0.0.1"), ctx)
-    m = [f for f in findings if "Méthodes HTTP" in f.title]
+    m = [f for f in findings if "Dangerous HTTP methods" in f.title]
     assert len(m) == 1
     assert "PUT" in m[0].evidence and "DELETE" in m[0].evidence
 

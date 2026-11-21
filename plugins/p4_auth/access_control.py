@@ -1,18 +1,18 @@
 """
-P4 — Broken Access Control / SSRF.
-Catégorie : A01:2025 Broken Access Control (qui ABSORBE le SSRF en 2025,
-ex-A10:2021). Reste #1 du Top 10.
+P4 - Broken Access Control / SSRF.
+Category: A01:2025 Broken Access Control (which ABSORBS SSRF in 2025,
+formerly A10:2021). Still #1 of the Top 10.
 
-Trois familles de tests, toutes réimplémentées :
-  1. IDOR  : incrément d'ID d'objet -> accès à des ressources d'autrui.
-  2. Méthodes HTTP dangereuses : PUT / DELETE / TRACE activées.
-  3. SSRF  : sonde des métadonnées cloud (169.254.169.254), IP internes,
-             schéma file:// sur un paramètre qui récupère une URL.
+Three families of tests, all reimplemented:
+  1. IDOR  : object-ID increment -> access to other users' resources.
+  2. Dangerous HTTP methods : PUT / DELETE / TRACE enabled.
+  3. SSRF  : probe cloud metadata (169.254.169.254), internal IPs,
+             file:// scheme on a parameter that fetches a URL.
 
-Entrées via ctx.extra (fournies à terme par le crawler de P3) :
-  - idor_url  : URL avec {id} (ex. "http://h/api/user/{id}"), baseline_id, id_range
-  - methods_url : URL à sonder pour les méthodes HTTP
-  - ssrf_url + ssrf_param : endpoint prenant une URL en paramètre
+Inputs via ctx.extra (eventually provided by P3's crawler):
+  - idor_url  : URL with {id} (e.g. "http://h/api/user/{id}"), baseline_id, id_range
+  - methods_url : URL to probe for HTTP methods
+  - ssrf_url + ssrf_param : endpoint that takes a URL parameter
 """
 from __future__ import annotations
 
@@ -78,29 +78,28 @@ class AccessControlPlugin(AttackPlugin):
             if r.status_code == 200 and len(body) > 0 and not _ERROR_SIG.search(body[:200]):
                 accessible.append((i, len(body)))
 
-        # IDOR probable : plusieurs objets distincts accessibles sans auth.
+        # Likely IDOR: several distinct objects accessible without auth.
         distinct_lengths = {ln for _, ln in accessible}
         findings = []
         if len(accessible) >= 2 and len(distinct_lengths) >= 2:
             ids = ", ".join(str(i) for i, _ in accessible)
             findings.append(Finding(
                 category="A01:2025 Broken Access Control",
-                title="IDOR probable : objets séquentiels accessibles sans autorisation",
+                title="Likely IDOR: sequential objects accessible without authorization",
                 severity=Severity.HIGH, cvss_score=8.1,
                 cvss_vector="CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:L/VA:N/SC:N/SI:N/SA:N",
-                evidence=(f"IDs accessibles via {url_tpl} : {ids}. "
-                          f"Réponses 200 de contenus distincts sans contrôle d'accès."),
-                recommendation=("Vérifier l'ownership côté serveur (l'utilisateur "
-                                "courant possède-t-il l'objet ?), utiliser des "
-                                "identifiants non devinables (UUID)."),
+                evidence=(f"IDs accessible via {url_tpl}: {ids}. "
+                          f"200 responses with distinct content and no access control."),
+                recommendation=("Enforce server-side ownership checks (does the current "
+                                "user own the object?), use non-guessable identifiers (UUID)."),
                 target=url_tpl, plugin=self.name))
         return findings
 
-    # --- 2. Méthodes HTTP dangereuses --------------------------------------
+    # --- 2. Dangerous HTTP methods -----------------------------------------
     async def _test_methods(self, client, ctx: Context) -> list[Finding]:
         url = ctx.extra["methods_url"]
         findings = []
-        # OPTIONS : lit l'en-tête Allow.
+        # OPTIONS: read the Allow header.
         allow = ""
         try:
             r = await client.request("OPTIONS", url)
@@ -121,17 +120,17 @@ class AccessControlPlugin(AttackPlugin):
             if method == "TRACE" and status == 200 and ("TRACE" in body or url in body):
                 enabled.append("TRACE (Cross-Site Tracing possible)")
             elif method in ("PUT", "DELETE", "PATCH") and status in (200, 201, 204):
-                enabled.append(f"{method} (écriture/suppression autorisée)")
+                enabled.append(f"{method} (write/delete allowed)")
 
         if enabled:
             findings.append(Finding(
                 category="A01:2025 Broken Access Control",
-                title="Méthodes HTTP dangereuses activées",
+                title="Dangerous HTTP methods enabled",
                 severity=Severity.MEDIUM, cvss_score=6.5,
-                evidence=(f"Méthodes acceptées sur {url} : {', '.join(enabled)}. "
-                          f"En-tête Allow='{allow}'."),
-                recommendation=("Désactiver les méthodes non nécessaires (PUT, DELETE, "
-                                "TRACE, PATCH) au niveau serveur/WAF."),
+                evidence=(f"Methods accepted on {url}: {', '.join(enabled)}. "
+                          f"Allow header='{allow}'."),
+                recommendation=("Disable unnecessary methods (PUT, DELETE, TRACE, "
+                                "PATCH) at the server/WAF level."),
                 target=url, plugin=self.name))
         return findings
 
@@ -152,19 +151,19 @@ class AccessControlPlugin(AttackPlugin):
         for payload, body in results:
             hit = None
             if _METADATA_SIG.search(body):
-                hit = "métadonnées cloud exposées"
+                hit = "cloud metadata exposed"
             elif _PASSWD_SIG.search(body):
-                hit = "lecture de fichier local (file://)"
+                hit = "local file read (file://)"
             if hit:
                 findings.append(Finding(
                     category="A01:2025 Broken Access Control",
-                    title=f"SSRF : {hit}",
+                    title=f"SSRF: {hit}",
                     severity=Severity.HIGH, cvss_score=9.1,
                     cvss_vector="CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:L/SC:L/SI:N/SA:N",
-                    evidence=f"Payload '{payload}' sur {url}?{param}= a renvoyé "
-                             f"un contenu interne.",
-                    recommendation=("Allow-list stricte des hôtes/schemas autorisés, "
-                                    "bloquer les IP internes et le schéma file://, "
-                                    "désactiver les redirections."),
+                    evidence=f"Payload '{payload}' on {url}?{param}= returned "
+                             f"internal content.",
+                    recommendation=("Strict allow-list of permitted hosts/schemes, "
+                                    "block internal IPs and the file:// scheme, "
+                                    "disable redirects."),
                     target=url, plugin=self.name))
         return findings

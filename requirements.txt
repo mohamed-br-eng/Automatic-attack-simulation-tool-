@@ -1,4 +1,4 @@
-# --- Noyau & réseau ---
+# --- Core & networking ---
 httpx==0.27.2
 anyio==4.4.0
 

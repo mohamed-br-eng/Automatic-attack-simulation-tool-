@@ -1,42 +1,51 @@
-# P4 — Web : Auth, Access Control & Rapport
+# P4 — Web: Authentication, Access Control & Reporting
 
-> Partie de **Mohamed** dans « Automatic Attacks Simulation Tool » (ISEP).
-> Branche de travail : `mohammed`.
+> Mohamed's part of the "Automatic Attacks Simulation Tool" (ISEP).
+> Working branch: `mohammed`.
 
-## Périmètre (ce que je présente en soutenance)
+## Scope (what I present at the defense)
 
-| Bloc | Fichier | Statut |
-|------|---------|--------|
-| **Brute force / dictionnaire** avec gestion token anti-CSRF | `plugins/p4_auth/bruteforce.py` | ✅ fait + testé |
-| **HTTP Basic / Digest** (challenge-response MD5 codé main) | `plugins/p4_auth/http_auth.py` | ✅ fait + testé |
-| **Broken Access Control / SSRF** (IDOR, méthodes dangereuses, `169.254.169.254`) | `plugins/p4_auth/access_control.py` | ✅ fait + testé |
-| **Moteur de rapport** JSON → HTML (Jinja2) → PDF (WeasyPrint) | `reporting/` | ✅ JSON+HTML faits + testés · PDF à activer (WeasyPrint) |
-| **Scoring CVSS 4.0** + priorisation EPSS | `scoring/cvss4.py` | ✅ fait + testé |
+| Block | File | Status |
+|-------|------|--------|
+| **Brute force / dictionary** with anti-CSRF token handling | `plugins/p4_auth/bruteforce.py` | Done + tested |
+| **HTTP Basic / Digest** (hand-coded MD5 challenge-response) | `plugins/p4_auth/http_auth.py` | Done + tested |
+| **Broken Access Control / SSRF** (IDOR, dangerous methods, `169.254.169.254`) | `plugins/p4_auth/access_control.py` | Done + tested |
+| **Reporting engine** JSON → HTML (Jinja2) → PDF (WeasyPrint) | `reporting/` | JSON+HTML done + tested · PDF to enable (WeasyPrint) |
+| **CVSS 4.0 scoring** + EPSS prioritization | `scoring/cvss4.py` | Done + tested |
 
-Catégories OWASP couvertes : **A07:2025 Authentication Failures**, **A01:2025 Broken Access Control** (absorbe le SSRF en 2025).
+OWASP categories covered: **A07:2025 Authentication Failures**, **A01:2025 Broken Access Control** (which absorbs SSRF in 2025).
 
-## Dépendances d'équipe
+## Team dependencies
 
-- **Contrat partagé** (`core/finding.py`, `core/plugin.py`, `core/context.py`) : appartient à **P1**. La version ici est une **proposition** pour travailler en autonomie → à réconcilier avec P1 en revue croisée (PR).
-- Le **crawler de P3** fournira la surface d'attaque (URLs, formulaires) ; en attendant, on passe l'URL de login via `ctx.extra["login_url"]`.
-- Le moteur de rapport **consomme les `Finding` de tout le monde** → se caler tôt avec P1 sur le format JSON.
+- The **shared contract** (`core/finding.py`, `core/plugin.py`, `core/context.py`) is owned by **P1**. The version here is a **proposal** to allow independent work → to be reconciled with P1 during peer review (PR).
+- **P3's crawler** will provide the attack surface (URLs, forms); meanwhile the login URL is passed via `ctx.extra["login_url"]`.
+- The reporting engine **consumes everyone's `Finding` objects** → align early with P1 on the JSON format.
 
-## Lancer les tests
+## Running the tests
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 pip install -r requirements.txt
-pytest -q                       # tests hors-ligne (respx), aucune cible reelle
+pytest -q                       # offline tests (respx), no real target
 ```
 
-## Le brute force en bref (ce qui vaut des points)
+## Generating a sample report
 
-1. **Détection du formulaire** : parsing HTML (stdlib) → champs user/password, action, méthode.
-2. **Token CSRF à usage unique** : re-fetch d'une page fraîche **avant chaque tentative** (patron DVWA / g0tmi1k).
-3. **Session/cookies** maintenus via un unique `httpx.AsyncClient`.
-4. **Succès/échec multi-signaux** : redirection 30x + marqueur de succès/échec + longueur de réponse → score de signaux (≥2 = succès). Réduit les faux positifs.
-5. **Rate-limiting** : les réponses `429` sont ignorées (pas comptées comme succès).
-6. **Concurrence bornée** par `asyncio.Semaphore` (éthique by design).
+```bash
+python -m reporting.demo        # writes reports/demo.html and reports/demo.json
+```
 
-> ⚠️ **Mode éthique** : le module ne doit tourner que contre le lab local (DVWA / Juice Shop, bindés sur `127.0.0.1`). Le garde-fou est dans `core/context.py` (`Context.ethics_gate`).
+Open `reports/demo.html` in a browser. The report uses a brand-neutral,
+validated status palette (security-standard red / orange / amber / blue / grey).
+
+## Brute force in a nutshell (what earns points)
+
+1. **Form detection**: HTML parsing (stdlib) → user/password fields, action, method.
+2. **Single-use CSRF token**: re-fetch a fresh page **before each attempt** (DVWA / g0tmi1k pattern).
+3. **Session/cookies** kept via a single `httpx.AsyncClient`.
+4. **Multi-signal success/failure**: 30x redirect + success/failure marker + response length → a signal score (≥2 = success). Reduces false positives.
+5. **Rate-limiting**: `429` responses are ignored (not counted as success).
+6. **Bounded concurrency** via `asyncio.Semaphore` (ethics by design).
+
+> **Ethical mode**: this module must only run against the local lab (DVWA / Juice Shop, bound to `127.0.0.1`). The guard lives in `core/context.py` (`Context.ethics_gate`).

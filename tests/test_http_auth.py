@@ -1,4 +1,4 @@
-"""Tests de l'auth HTTP Basic/Digest codee main (P4)."""
+"""HTTP Basic/Digest auth tests, hand-coded (P4)."""
 import base64
 import hashlib
 
@@ -62,7 +62,7 @@ async def test_digest_bruteforce():
         if not auth.lower().startswith("digest"):
             return httpx.Response(401, headers={
                 "www-authenticate": f'Digest realm="{realm}", nonce="{nonce}", qop="auth"'})
-        # Re-calcule la reponse attendue pour admin:secret et compare.
+        # Recompute the expected response for admin:secret and compare.
         import re
         params = dict(re.findall(r'(\w+)="?([^",]+)"?', auth))
         ha1 = _md5(f'admin:{realm}:secret')

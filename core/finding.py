@@ -1,10 +1,10 @@
 """
-Modèle de données central : Finding.
+Central data model: Finding.
 
-⚠️ CONTRAT PARTAGÉ (appartient à P1 — Architecte/Noyau).
-Cette version est une PROPOSITION de P4 pour pouvoir travailler et tester
-en autonomie. À réconcilier avec P1 lors d'une revue croisée (PR).
-Tant que la signature reste stable, les 5 modules restent parallélisables.
+WARNING - SHARED CONTRACT (owned by P1 - Architect/Core).
+This version is a PROPOSAL by P4 so the module can be built and tested
+independently. To be reconciled with P1 during peer review (PR).
+As long as the signature stays stable, all 5 modules remain parallelizable.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from enum import Enum
 
 
 class Severity(str, Enum):
-    """Sévérité qualitative dérivée du score CVSS 4.0 (voir scoring/cvss4.py)."""
+    """Qualitative severity derived from the CVSS 4.0 score (see scoring/cvss4.py)."""
     INFO = "INFO"
     LOW = "LOW"
     MEDIUM = "MEDIUM"
@@ -30,23 +30,23 @@ def _now() -> datetime:
 @dataclass
 class Finding:
     """
-    La colonne vertébrale JSON -> rapport -> GUI.
+    The JSON -> report -> GUI backbone.
 
-    Un plugin d'attaque produit une liste de Finding. Le pipeline de reporting
-    (P4) et le dashboard (P5) ne consomment QUE cette structure.
+    An attack plugin produces a list of Finding objects. The reporting pipeline
+    (P4) and the dashboard (P5) consume ONLY this structure.
     """
-    category: str                 # ex. "A07:2025 Authentication Failures"
-    title: str                    # titre court lisible
-    severity: Severity            # dérivée du CVSS
-    evidence: str                 # payload + extrait requête/réponse
-    recommendation: str           # remédiation actionnable
-    cvss_vector: str = ""         # ex. "CVSS:4.0/AV:N/AC:L/..."
-    cvss_score: float = 0.0       # score base 0.0 - 10.0
-    epss: float | None = None     # probabilité d'exploitation (0-1), enrichissement
-    target: str = ""              # cible concernée (host:port ou URL)
-    plugin: str = ""              # nom du plugin émetteur
-    request: str = ""             # requête HTTP brute (preuve)
-    response: str = ""            # extrait de réponse (preuve)
+    category: str                 # e.g. "A07:2025 Authentication Failures"
+    title: str                    # short human-readable title
+    severity: Severity            # derived from CVSS
+    evidence: str                 # payload + request/response excerpt
+    recommendation: str           # actionable remediation
+    cvss_vector: str = ""         # e.g. "CVSS:4.0/AV:N/AC:L/..."
+    cvss_score: float = 0.0       # base score 0.0 - 10.0
+    epss: float | None = None     # exploitation probability (0-1), enrichment
+    target: str = ""              # affected target (host:port or URL)
+    plugin: str = ""              # emitting plugin name
+    request: str = ""             # raw HTTP request (evidence)
+    response: str = ""            # response excerpt (evidence)
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: datetime = field(default_factory=_now)
 

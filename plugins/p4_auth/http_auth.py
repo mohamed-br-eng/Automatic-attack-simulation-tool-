@@ -1,16 +1,16 @@
 """
-P4 — Brute force sur l'authentification HTTP (Basic & Digest), codée MAIN.
-Catégorie : A07:2025 Authentication Failures.
+P4 - Brute force on HTTP authentication (Basic & Digest), hand-coded.
+Category: A07:2025 Authentication Failures.
 
-Pas de bibliothèque d'auth : on forge nous-mêmes les en-têtes.
+No auth library: we forge the headers ourselves.
   - Basic  : Authorization: Basic base64(user:pass).
-  - Digest : challenge-response MD5 (RFC 2617) — on parse le challenge
-             WWW-Authenticate, puis on calcule
+  - Digest : MD5 challenge-response (RFC 2617) - we parse the
+             WWW-Authenticate challenge, then compute
              HA1 = MD5(user:realm:pass)
              HA2 = MD5(method:uri)
              response = MD5(HA1:nonce:nc:cnonce:qop:HA2).
 
-Le schéma (Basic ou Digest) est DÉTECTÉ depuis la réponse 401 du serveur.
+The scheme (Basic or Digest) is DETECTED from the server's 401 response.
 """
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ def _md5(s: str) -> str:
 
 
 def parse_challenge(header: str) -> dict:
-    """Parse un en-tête WWW-Authenticate: Digest realm=..., nonce=..., qop=..."""
+    """Parse a WWW-Authenticate: Digest realm=..., nonce=..., qop=... header."""
     scheme = "digest" if header.lower().startswith("digest") else "basic"
     params = dict(re.findall(r'(\w+)="?([^",]+)"?', header))
     params["_scheme"] = scheme
@@ -44,7 +44,7 @@ def parse_challenge(header: str) -> dict:
 
 def digest_header(user: str, password: str, method: str, uri: str,
                   challenge: dict, cnonce: str | None = None, nc: str = "00000001") -> str:
-    """Construit l'en-tête Authorization: Digest (qop=auth)."""
+    """Build the Authorization: Digest header (qop=auth)."""
     realm = challenge.get("realm", "")
     nonce = challenge.get("nonce", "")
     qop = challenge.get("qop", "auth").split(",")[0].strip()
@@ -84,14 +84,14 @@ class HttpAuthPlugin(AttackPlugin):
         findings: list[Finding] = []
 
         async with httpx.AsyncClient(timeout=ctx.timeout) as client:
-            # 1. Déclenche le challenge 401 pour détecter le schéma.
+            # 1. Trigger the 401 challenge to detect the scheme.
             try:
                 probe = await client.get(url)
             except httpx.HTTPError as e:
-                return [self._info(url, f"endpoint inaccessible: {e}")]
+                return [self._info(url, f"endpoint unreachable: {e}")]
 
             if probe.status_code != 401:
-                return [self._info(url, "pas d'authentification HTTP (401 attendu)")]
+                return [self._info(url, "no HTTP authentication (401 expected)")]
 
             challenge = parse_challenge(probe.headers.get("www-authenticate", ""))
             scheme = challenge["_scheme"]
@@ -119,22 +119,22 @@ class HttpAuthPlugin(AttackPlugin):
             for u, p in found:
                 findings.append(Finding(
                     category="A07:2025 Authentication Failures",
-                    title=f"Auth HTTP {scheme.capitalize()} faible : {u}:{p}",
+                    title=f"Weak HTTP {scheme.capitalize()} auth: {u}:{p}",
                     severity=Severity.HIGH, cvss_score=8.7,
                     cvss_vector="CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N",
-                    evidence=f"Schéma {scheme}, realm='{challenge.get('realm','')}'. "
-                             f"Identifiants {u}:{p} acceptés (HTTP non-401).",
-                    recommendation=("Mots de passe forts, bannir Basic sur HTTP clair, "
-                                    "préférer une auth applicative + MFA + lockout."),
+                    evidence=f"Scheme {scheme}, realm='{challenge.get('realm','')}'. "
+                             f"Credentials {u}:{p} accepted (non-401 HTTP).",
+                    recommendation=("Strong passwords, never use Basic over cleartext "
+                                    "HTTP, prefer app-level auth + MFA + lockout."),
                     target=url, plugin=self.name,
                     request=f"GET {url}  (Authorization: {scheme})"))
 
         if not findings:
-            findings.append(self._info(url, "aucun identifiant HTTP faible trouvé"))
+            findings.append(self._info(url, "no weak HTTP credentials found"))
         return findings
 
     def _info(self, url: str, msg: str) -> Finding:
         return Finding(
             category="A07:2025 Authentication Failures",
-            title="Auth HTTP : rien à signaler", severity=Severity.INFO,
-            evidence=msg, recommendation="—", target=url, plugin=self.name)
+            title="HTTP auth: nothing to report", severity=Severity.INFO,
+            evidence=msg, recommendation="-", target=url, plugin=self.name)

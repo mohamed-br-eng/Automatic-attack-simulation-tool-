@@ -1,119 +1,213 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Rapport de scan — {{ meta.target }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security Scan Report — {{ meta.target }}</title>
 <style>
+  /* Brand-neutral palette (dataviz skill): surfaces + validated status colors.
+     Deliberately NOT a Claude/Anthropic brand palette. */
   :root {
-    --bg: #0f172a; --panel: #1e293b; --panel2: #273449;
-    --text: #e2e8f0; --muted: #94a3b8; --border: #334155; --accent: #38bdf8;
+    --plane:      #0d0d0d;   /* page plane            */
+    --surface-1:  #161615;   /* card surface          */
+    --surface-2:  #211f1e;   /* nested surface        */
+    --ink:        #f0efec;   /* primary text          */
+    --ink-2:      #c3c2b7;   /* secondary text        */
+    --muted:      #898781;   /* axis / labels         */
+    --border:     rgba(255,255,255,0.10);
+    --grid:       #2c2c2a;
+    --accent:     #3987e5;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.5; font-size: 14px;
+    margin: 0; background: var(--plane); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; font-size: 14.5px;
+    font-feature-settings: "kern" 1;
   }
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 20px; }
-  header h1 { margin: 0 0 4px; font-size: 24px; }
-  header .meta { color: var(--muted); font-size: 13px; }
-  header .meta code { color: var(--accent); }
-  h2 { font-size: 18px; border-bottom: 1px solid var(--border);
-       padding-bottom: 6px; margin-top: 36px; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 40px 24px 64px; }
 
-  .cards { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
-  .card { background: var(--panel); border: 1px solid var(--border);
-          border-radius: 10px; padding: 14px 18px; min-width: 110px; flex: 1; }
-  .card .n { font-size: 28px; font-weight: 700; }
-  .card .l { color: var(--muted); font-size: 12px; text-transform: uppercase;
-             letter-spacing: .04em; }
+  /* Header */
+  .masthead { border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+  .eyebrow { color: var(--muted); font-size: 11.5px; letter-spacing: .14em;
+             text-transform: uppercase; font-weight: 600; }
+  .masthead h1 { margin: 6px 0 14px; font-size: 25px; font-weight: 650;
+                 letter-spacing: -.01em; }
+  .metagrid { display: flex; flex-wrap: wrap; gap: 8px 28px; color: var(--ink-2);
+              font-size: 12.5px; }
+  .metagrid b { color: var(--ink); font-weight: 600; }
+  .metagrid code { color: var(--accent); font-family: ui-monospace, "Cascadia Code",
+                   Consolas, monospace; font-size: 12px; }
 
-  .posture { display: inline-block; padding: 6px 14px; border-radius: 999px;
-             font-weight: 700; color: #fff; }
+  h2 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase;
+       color: var(--muted); font-weight: 600; margin: 40px 0 14px; }
 
-  .finding { background: var(--panel); border: 1px solid var(--border);
-             border-left-width: 5px; border-radius: 8px;
-             padding: 14px 16px; margin: 12px 0; }
-  .finding h3 { margin: 0 0 6px; font-size: 15px; }
-  .badges { margin: 4px 0 10px; }
-  .badge { display: inline-block; padding: 2px 9px; border-radius: 6px;
-           font-size: 11px; font-weight: 700; color: #fff; margin-right: 6px; }
-  .badge.cat { background: var(--panel2); color: var(--muted); }
-  .kv { color: var(--muted); font-size: 12px; margin: 2px 0; }
-  .reco { background: var(--panel2); border-radius: 6px; padding: 8px 12px;
-          margin-top: 8px; }
-  details { margin-top: 8px; }
-  summary { cursor: pointer; color: var(--accent); font-size: 13px; }
-  pre { background: #0b1220; border: 1px solid var(--border); border-radius: 6px;
-        padding: 10px; overflow-x: auto; font-size: 12px;
-        white-space: pre-wrap; word-break: break-word; }
-  footer { margin-top: 40px; color: var(--muted); font-size: 12px;
-           border-top: 1px solid var(--border); padding-top: 12px; }
+  /* Posture + tiles */
+  .posture-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+                 margin-bottom: 18px; }
+  .posture { display: inline-flex; align-items: center; gap: 8px;
+             padding: 7px 15px; border-radius: 8px; font-weight: 650;
+             font-size: 13px; color: #fff; }
+  .posture .dot { width: 9px; height: 9px; border-radius: 50%;
+                  background: rgba(255,255,255,.85); }
+  .posture-note { color: var(--ink-2); font-size: 13px; }
+  .posture-note b { color: var(--ink);
+                    font-variant-numeric: tabular-nums; }
+
+  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  @media (max-width: 640px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--surface-1); border: 1px solid var(--border);
+          border-radius: 11px; padding: 14px 16px; position: relative;
+          overflow: hidden; }
+  .tile::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+                  width: 3px; background: var(--c, var(--muted)); }
+  .tile .n { font-size: 30px; font-weight: 680; line-height: 1;
+             font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .tile .l { color: var(--muted); font-size: 10.5px; text-transform: uppercase;
+             letter-spacing: .1em; font-weight: 600; margin-top: 8px;
+             display: flex; align-items: center; gap: 6px; }
+  .tile .l .sw { width: 8px; height: 8px; border-radius: 2px;
+                 background: var(--c, var(--muted)); }
+
+  /* Severity distribution bar */
+  .dist { display: flex; width: 100%; height: 14px; border-radius: 5px;
+          overflow: hidden; margin: 6px 0 8px; background: var(--surface-2); }
+  .dist span { height: 100%; border-right: 2px solid var(--plane); }
+  .dist span:last-child { border-right: 0; }
+  .dist-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--ink-2);
+                 font-size: 11.5px; }
+  .dist-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px;
+                   margin-right: 6px; vertical-align: baseline; }
+
+  /* Top risks */
+  ol.risks { margin: 6px 0 0; padding-left: 0; list-style: none; }
+  ol.risks li { padding: 10px 0; border-bottom: 1px solid var(--border);
+                display: flex; align-items: baseline; gap: 12px; }
+  ol.risks li:last-child { border-bottom: 0; }
+  ol.risks .rank { color: var(--muted); font-size: 12px; min-width: 20px;
+                   font-variant-numeric: tabular-nums; }
+  ol.risks .rt { flex: 1; }
+  ol.risks .rt b { font-weight: 600; }
+  ol.risks .rt small { color: var(--muted); display: block; font-size: 12px; }
+  ol.risks .score { font-variant-numeric: tabular-nums; font-weight: 650;
+                    font-size: 13px; }
+
+  /* Findings */
+  .finding { background: var(--surface-1); border: 1px solid var(--border);
+             border-left: 4px solid var(--c, var(--muted)); border-radius: 10px;
+             padding: 16px 18px; margin: 12px 0; }
+  .finding h3 { margin: 0 0 10px; font-size: 15.5px; font-weight: 620; }
+  .badges { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px;
+           border-radius: 6px; font-size: 11px; font-weight: 650;
+           background: var(--surface-2); color: var(--ink-2); }
+  .badge.sev { color: #fff; }
+  .badge .sw { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .kv { color: var(--muted); font-size: 12px; margin: 3px 0;
+        font-variant-numeric: tabular-nums; }
+  .kv b { color: var(--ink-2); font-weight: 600; }
+  .reco { background: var(--surface-2); border-radius: 8px; padding: 10px 13px;
+          margin-top: 11px; font-size: 13.5px; }
+  .reco b { color: var(--accent); }
+  details { margin-top: 11px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 12.5px;
+            font-weight: 600; user-select: none; }
+  summary:hover { text-decoration: underline; }
+  pre { background: #0b0b0a; border: 1px solid var(--border); border-radius: 7px;
+        padding: 11px 13px; overflow-x: auto; font-size: 12px; margin: 8px 0 0;
+        white-space: pre-wrap; word-break: break-word; color: var(--ink-2);
+        font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+
+  footer { margin-top: 48px; color: var(--muted); font-size: 11.5px;
+           border-top: 1px solid var(--border); padding-top: 16px; }
+  @media print {
+    body { background: #fff; color: #111; }
+    .wrap { max-width: none; }
+    details { display: block; } details > summary { display: none; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>Rapport d'analyse de sécurité</h1>
-    <div class="meta">
-      Cible : <code>{{ meta.target }}</code> ·
-      Outil : {{ meta.tool }} ·
-      Généré le {{ meta.generated_at }}
-      {% if meta.scan_id %}· Scan <code>{{ meta.scan_id }}</code>{% endif %}
+  <header class="masthead">
+    <div class="eyebrow">Security Assessment</div>
+    <h1>Automated Web Attack Simulation — Report</h1>
+    <div class="metagrid">
+      <span><b>Target</b> <code>{{ meta.target }}</code></span>
+      <span><b>Tool</b> {{ meta.tool }}</span>
+      <span><b>Generated</b> {{ meta.generated_at }}</span>
+      {% if meta.scan_id %}<span><b>Scan</b> <code>{{ meta.scan_id }}</code></span>{% endif %}
     </div>
   </header>
 
-  <h2>Résumé exécutif</h2>
-  <p>
-    Posture globale :
+  <h2>Executive Summary</h2>
+  <div class="posture-row">
     <span class="posture" style="background: {{ summary.posture | sev_color }}">
-      {{ summary.posture }}
+      <span class="dot"></span> Overall posture: {{ summary.posture }}
     </span>
-    — {{ summary.total }} finding(s) au total.
-  </p>
-  <div class="cards">
+    <span class="posture-note"><b>{{ summary.total }}</b>
+      finding{{ "s" if summary.total != 1 else "" }} in total.</span>
+  </div>
+
+  {% if summary.total %}
+  <div class="dist" role="img" aria-label="Severity distribution">
+    {% for sev in severity_order %}{% if summary.by_severity[sev] %}
+    <span style="flex: {{ summary.by_severity[sev] }}; background: {{ sev | sev_color }}"
+          title="{{ sev }}: {{ summary.by_severity[sev] }}"></span>
+    {% endif %}{% endfor %}
+  </div>
+  <div class="dist-legend">
     {% for sev in severity_order %}
-    <div class="card" style="border-left: 4px solid {{ sev | sev_color }}">
+    <span><i style="background: {{ sev | sev_color }}"></i>{{ sev }} {{ summary.by_severity[sev] }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="tiles" style="margin-top: 18px;">
+    {% for sev in severity_order %}
+    <div class="tile" style="--c: {{ sev | sev_color }}">
       <div class="n">{{ summary.by_severity[sev] }}</div>
-      <div class="l">{{ sev }}</div>
+      <div class="l"><span class="sw"></span>{{ sev }}</div>
     </div>
     {% endfor %}
   </div>
 
   {% if summary.top_risks %}
-  <h3>Top risques</h3>
-  <ul>
+  <h2>Top Risks</h2>
+  <ol class="risks">
     {% for r in summary.top_risks %}
-    <li><strong>{{ r.title }}</strong> — {{ r.category }}
-        ({{ r.severity }}, CVSS {{ "%.1f"|format(r.cvss_score) }})</li>
+    <li>
+      <span class="rank">{{ loop.index }}</span>
+      <span class="rt"><b>{{ r.title }}</b><small>{{ r.category }} · {{ r.severity }}</small></span>
+      <span class="score" style="color: {{ r.severity | sev_color }}">
+        {{ "%.1f"|format(r.cvss_score) }}</span>
+    </li>
     {% endfor %}
-  </ul>
+  </ol>
   {% endif %}
 
-  <h2>Détails techniques</h2>
+  <h2>Technical Findings</h2>
   {% for f in findings %}
-  <div class="finding" style="border-left-color: {{ f.severity | sev_color }}">
+  <div class="finding" style="--c: {{ f.severity | sev_color }}">
     <h3>{{ f.title }}</h3>
     <div class="badges">
-      <span class="badge" style="background: {{ f.severity | sev_color }}">
-        {{ f.severity }}</span>
-      <span class="badge cat">{{ f.category }}</span>
-      {% if f.cvss_score %}
-      <span class="badge cat">CVSS {{ "%.1f"|format(f.cvss_score) }}</span>
-      {% endif %}
-      {% if f.epss is not none %}
-      <span class="badge cat">EPSS {{ "%.3f"|format(f.epss) }}</span>
-      {% endif %}
+      <span class="badge sev" style="background: {{ f.severity | sev_color }}">
+        <span class="sw"></span>{{ f.severity }}</span>
+      <span class="badge">{{ f.category }}</span>
+      {% if f.cvss_score %}<span class="badge">CVSS {{ "%.1f"|format(f.cvss_score) }}</span>{% endif %}
+      {% if f.epss is not none %}<span class="badge">EPSS {{ "%.3f"|format(f.epss) }}</span>{% endif %}
     </div>
-    {% if f.cvss_vector %}<div class="kv">Vecteur : {{ f.cvss_vector }}</div>{% endif %}
-    {% if f.target %}<div class="kv">Cible : {{ f.target }}</div>{% endif %}
-    {% if f.plugin %}<div class="kv">Module : {{ f.plugin }}</div>{% endif %}
+    {% if f.cvss_vector %}<div class="kv"><b>Vector</b> {{ f.cvss_vector }}</div>{% endif %}
+    {% if f.target %}<div class="kv"><b>Target</b> {{ f.target }}</div>{% endif %}
+    {% if f.plugin %}<div class="kv"><b>Module</b> {{ f.plugin }}</div>{% endif %}
 
-    <div class="reco"><strong>Remédiation :</strong> {{ f.recommendation }}</div>
+    <div class="reco"><b>Remediation.</b> {{ f.recommendation }}</div>
 
     {% if f.evidence or f.request or f.response %}
     <details>
-      <summary>Preuve (payload / requête / réponse)</summary>
+      <summary>Evidence (payload / request / response)</summary>
       {% if f.evidence %}<pre>{{ f.evidence }}</pre>{% endif %}
       {% if f.request %}<pre>&gt; {{ f.request }}</pre>{% endif %}
       {% if f.response %}<pre>&lt; {{ f.response }}</pre>{% endif %}
@@ -121,12 +215,12 @@
     {% endif %}
   </div>
   {% else %}
-  <p>Aucun finding.</p>
+  <p style="color: var(--ink-2);">No findings.</p>
   {% endfor %}
 
   <footer>
-    Rapport généré automatiquement — {{ meta.tool }}.
-    Démo hors-ligne sur lab local autorisé uniquement.
+    Report generated automatically — {{ meta.tool }}.
+    For authorized offline lab testing only.
   </footer>
 </div>
 </body>

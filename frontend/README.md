@@ -1,6 +1,6 @@
 # P5 · Sentinel dashboard
 
-React + strict TypeScript + Vite dashboard for the existing Automatic Attacks Simulation Tool. All P5 changes are inside `frontend/`; shared Python contracts, reporting, scoring and attack plugins are unchanged. The planning documents are background material; this implementation follows the user's narrower frontend-only scope.
+React + strict TypeScript + Vite dashboard for the Automatic Attacks Simulation Tool. P5 frontend code is contained in `frontend/`. Shared Python models, reporting, scoring and attack plugins remain maintained by their respective owners.
 
 ## Run locally
 
@@ -27,7 +27,7 @@ npm run preview
 - Responsive dark layout, mobile navigation, keyboard focus indicators, skip link, semantic tables and labeled form controls.
 - Overview statistics, compact stacked severity bar and OWASP category chart (Recharts), priority review ordered by reported severity then CVSS.
 - Scan history with status/progress, scan context, chronological timeline, and findings scoped to each scan.
-- Searchable findings with severity, OWASP, target and data-source filters, including CVSS / EPSS sorting, with pagination and detail views for evidence, requests, responses, remediation, vector, score and EPSS.
+- Searchable findings with severity, OWASP, target and data-source filters, including CVSS / EPSS sorting, pagination and detail views for evidence, requests, responses, remediation, vector, score and EPSS.
 - Local JSON import for P4 reports, Zod validation and actionable errors. Rejected imports do not alter existing results. HTML in evidence is rendered as inert text.
 - P3 adapter with editable JSON mapping and nested field paths. This is provisional until P3 supplies its format.
 - React Flow topology renderer when an API supplies nodes and edges; an explicit unavailable state otherwise. No invented network connections.
@@ -82,7 +82,7 @@ Validated locally on 22 November 2026:
 
 - `npm run build`: passed, including strict TypeScript. Rollup emitted two upstream Zod comment-annotation warnings; output was generated successfully.
 - `npm run lint`: passed with zero errors and zero warnings.
-- `npm test`: 34 tests passed (22 adapter/API cases, 12 dashboard workflows). Includes actual P4 export compatibility, invalid reports, nested P3 mappings, filtering/sorting, import recovery, inert HTML evidence, disabled AI, API errors mobile keyboard navigation, source-scoped chart consistency, target filters and pagination.
+- `npm test`: 34 tests passed (22 adapter/API cases, 12 dashboard workflows). Includes actual P4 export compatibility, invalid reports, nested P3 mappings, filtering/sorting, import recovery, inert HTML evidence, disabled AI, API errors, mobile keyboard navigation, source-scoped chart consistency, target filters and pagination.
 - From repository root, `frontend/.venv/Scripts/python.exe -m pytest -q`: all 23 existing Python tests passed. This ignored local virtual environment contains only test dependencies; no Python source or dependency files were changed.
 - Browser review at desktop and 390 × 844 mobile dimensions: checked overview, charts, mobile menu, and page width. Fixed overflow from hidden table headings and mobile chart sizing. Desktop viewport restored afterward.
 - `git diff --exit-code HEAD -- core plugins reporting scoring tests requirements.txt pytest.ini`: passed, confirming teammates' tracked source and tests are unchanged.

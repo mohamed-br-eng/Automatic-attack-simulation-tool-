@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "target": "127.0.0.1",
+    "scan_id": "p4-integration-fixture",
+    "tool": "Automatic Attacks Simulation Tool",
+    "generated_at": "2026-11-21T23:05:18.337254+00:00"
+  },
+  "summary": {
+    "total": 3,
+    "by_severity": {
+      "CRITICAL": 0,
+      "HIGH": 1,
+      "MEDIUM": 1,
+      "LOW": 1,
+      "INFO": 0
+    },
+    "posture": "HIGH",
+    "top_risks": [
+      {
+        "title": "Identifiants faibles valides : admin:password",
+        "severity": "HIGH",
+        "cvss_score": 8.7,
+        "category": "A07:2025 Authentication Failures"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "category": "A07:2025 Authentication Failures",
+      "title": "Identifiants faibles valides : admin:password",
+      "severity": "HIGH",
+      "evidence": "Login=admin / Password=password accepte.\nToken CSRF gere: oui.",
+      "recommendation": "Politique de mot de passe forte, verrouillage apres N echecs, MFA.",
+      "cvss_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N",
+      "cvss_score": 8.7,
+      "epss": null,
+      "target": "http://127.0.0.1:8080/login.php",
+      "plugin": "bruteforce",
+      "request": "POST /login.php (username=..., password=...)",
+      "response": "HTTP 302 -> /index.php, 0 octet",
+      "id": "8b8ae254-ec16-436b-8864-1b42799446fb",
+      "timestamp": "2026-11-21T23:05:18.336948+00:00"
+    },
+    {
+      "category": "A01:2025 Broken Access Control",
+      "title": "IDOR : acces a /api/user/2 sans autorisation",
+      "severity": "MEDIUM",
+      "evidence": "GET /api/user/2 renvoie les donnees d'un autre utilisateur.",
+      "recommendation": "Controle d'acces cote serveur (ownership check).",
+      "cvss_vector": "",
+      "cvss_score": 5.3,
+      "epss": 0.08,
+      "target": "http://127.0.0.1:8080/api/user/2",
+      "plugin": "access_control",
+      "request": "",
+      "response": "",
+      "id": "a514924a-da09-4f25-aeac-e22e94bfd51e",
+      "timestamp": "2026-11-21T23:05:18.336966+00:00"
+    },
+    {
+      "category": "A07:2025 Authentication Failures",
+      "title": "Absence de verrouillage de compte",
+      "severity": "LOW",
+      "evidence": "20 tentatives echouees sans blocage ni delai.",
+      "recommendation": "Rate-limiting + lockout temporaire.",
+      "cvss_vector": "",
+      "cvss_score": 3.1,
+      "epss": null,
+      "target": "",
+      "plugin": "bruteforce",
+      "request": "",
+      "response": "",
+      "id": "d6bf4ab7-c911-4b3b-9397-fe38e59e659b",
+      "timestamp": "2026-11-21T23:05:18.336972+00:00"
+    }
+  ]
+}

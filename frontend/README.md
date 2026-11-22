@@ -93,4 +93,4 @@ Current limitations: imported history is in memory; API paths remain a documente
 
 The overview now puts priority findings above compact charts and operational metrics. The charcoal / teal visual system is shared by all routes, with compact headers, an understated sidebar, 4px radii and monospace technical fields. Finding tables show severity, vulnerability, target, CVSS, EPSS, plugin plus data provenance, and observation time. The overview source selector scopes metrics, charts, priority findings and recent scans to the same loaded reports.
 
-See [REDESIGN.md](./REDESIGN.md) for the audit, exact changed-file list and validation. The existing Finding schema has no CWE field, so a CWE filter is not exposed. No missing vulnerability metadata is fabricated.
+The existing Finding schema has no CWE field, so a CWE filter is not exposed. No missing vulnerability metadata is fabricated.

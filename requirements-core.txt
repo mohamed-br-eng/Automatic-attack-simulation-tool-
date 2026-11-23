@@ -1,0 +1,13 @@
+# Minimal dependencies to RUN and TEST the project (P2 demo included).
+# This excludes weasyprint (PDF export) on purpose: it needs GTK on Windows and
+# often fails to install. HTML + JSON reports work without it.
+# Install with:  python -m pip install -r requirements-core.txt
+
+httpx==0.27.2
+anyio==4.4.0
+jinja2==3.1.4
+
+# Tests
+pytest==8.3.2
+pytest-asyncio==0.23.8
+respx==0.21.1

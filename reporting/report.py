@@ -11,9 +11,8 @@ Usage:
     builder.to_html("reports/scan.html")
     builder.to_pdf("reports/scan.pdf")   # requires weasyprint
 
-Severity colors follow the validated, brand-neutral status palette from the
-`dataviz` skill (industry-standard security convention: red / orange / amber /
-blue / grey), deliberately NOT a Claude/Anthropic brand palette.
+Severity colors follow a validated, brand-neutral status palette
+(industry-standard security convention: red / orange / amber / blue / grey).
 """
 from __future__ import annotations
 
